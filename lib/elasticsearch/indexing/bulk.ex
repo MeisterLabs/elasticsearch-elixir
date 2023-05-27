@@ -108,20 +108,30 @@ defmodule Elasticsearch.Index.Bulk do
         |> Stream.map(&encode!(config, &1, index_name, action))
         |> Stream.chunk_every(bulk_page_size)
         |> Stream.intersperse(bulk_wait_interval)
-        |> Stream.map(&put_bulk_page(config, index_name, &1))
+        # |> Stream.map(&put_bulk_page(config, index_name, &1))
+        |> Stream.map(&post_bulk_page(config, index_name, &1))
         |> Enum.reduce(errors, &collect_errors(&1, &2, action))
       end)
 
     upload(config, index_name, %{index_config | sources: tail}, errors)
   end
 
-  defp put_bulk_page(_config, _index_name, wait_interval) when is_integer(wait_interval) do
+  # defp put_bulk_page(_config, _index_name, wait_interval) when is_integer(wait_interval) do
+  #   Logger.debug("Pausing #{wait_interval}ms between bulk pages")
+  #   :timer.sleep(wait_interval)
+  # end
+
+  defp post_bulk_page(_config, _index_name, wait_interval) when is_integer(wait_interval) do
     Logger.debug("Pausing #{wait_interval}ms between bulk pages")
     :timer.sleep(wait_interval)
   end
 
-  defp put_bulk_page(config, index_name, items) when is_list(items) do
-    Elasticsearch.put(config, "/#{index_name}/_doc/_bulk", Enum.join(items))
+  # defp put_bulk_page(config, index_name, items) when is_list(items) do
+  #   Elasticsearch.put(config, "/#{index_name}/_doc/_bulk", Enum.join(items))
+  # end
+
+  defp post_bulk_page(config, index_name, items) when is_list(items) do
+    Elasticsearch.post(config, "/#{index_name}/_bulk", Enum.join(items))
   end
 
   defp collect_errors({:ok, %{"errors" => true} = response}, errors, action) do
