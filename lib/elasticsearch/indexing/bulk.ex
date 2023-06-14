@@ -55,12 +55,14 @@ defmodule Elasticsearch.Index.Bulk do
     config = Cluster.Config.get(cluster)
     header = header(config, action, index, struct)
 
-    document =
-      struct
-      |> Document.encode()
-      |> config.json_library.encode!()
+    case Document.encode(struct) do
+      doc when is_map(doc) ->
+        document = config.json_library.encode!(doc)
+        "#{header}\n#{document}\n"
 
-    "#{header}\n#{document}\n"
+      _ ->
+        :skip
+    end
   end
 
   defp header(config, type, index, struct) do
@@ -106,6 +108,7 @@ defmodule Elasticsearch.Index.Bulk do
         source
         |> store.stream()
         |> Stream.map(&encode!(config, &1, index_name, action))
+        |> Stream.reject(fn item -> item == :skip end)
         |> Stream.chunk_every(bulk_page_size)
         |> Stream.intersperse(bulk_wait_interval)
         # |> Stream.map(&put_bulk_page(config, index_name, &1))
