@@ -512,6 +512,11 @@ defmodule Elasticsearch do
     {:ok, body}
   end
 
+  defp format({:ok, %{status: code, body: body}})
+       when code >= 200 and code < 300 do
+    {:ok, body}
+  end
+
   defp format({:ok, %{body: body}}) do
     error = Elasticsearch.Exception.exception(response: body)
     {:error, error}
